@@ -1,0 +1,130 @@
+name: Node.js Full Stack App
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # — Clean up disk space —
+      - name: Clean up disk space
+        run: |
+          echo "Cleaning up disk space..."
+          sudo apt clean
+          sudo rm -rf /var/lib/apt/lists/*
+          sudo rm -rf /tmp/*
+          sudo rm -rf /var/cache/apt/archives/*
+          sudo docker system prune -af || true
+          df -h
+
+      # — Python setup for backend —
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      # — Node.js setup for frontend —
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+
+      # — Environment file setup —
+      - name: Create .env file
+        run: echo "${{ secrets.PROD_ENV_FILE }}" > backend/.env
+      
+      # — Install system dependencies for OpenCV —
+      - name: Install system dependencies
+        run: |
+          sudo apt update -qq
+          sudo apt install -y -qq libglib2.0-0 libsm6 libxext6 libxrender-dev python3-venv python3-full python3-dev
+
+      # — Backend deps & prep —
+      - name: Setup Python virtual environment and install dependencies
+        run: |
+          cd backend
+          python3 -m venv venv
+          . venv/bin/activate
+          pip install --upgrade pip
+          pip uninstall -y opencv-python opencv-contrib-python || true
+          # Install OpenCV headless with no cache to save disk space
+          pip install --no-cache-dir opencv-python-headless
+          # Install other dependencies with no cache
+          pip install --no-cache-dir -r requirements.txt
+
+      # — Test Python imports —
+      - name: Test critical Python imports
+        run: |
+          cd backend
+          . venv/bin/activate
+          python -c "import fastapi; import cv2; from agentic_doc.parse import parse_documents; print('✅ All imports successful')"
+
+      # — Frontend deps & build —
+      - name: Creating frontend env
+        run: |
+          cd frontend
+          echo REACT_APP_API_URL = "${{ secrets.REACT_APP_API_URL }}" > .env
+
+      - name: Install Node.js dependencies
+        run: |
+          cd frontend
+          npm ci --no-cache
+
+
+      - name: Build React application
+        run: |
+          cd frontend
+          CI=false npm run build
+
+      # — Install concurrently globally if not present —
+      - name: Install concurrently
+        run: npm install -g concurrently || true
+
+      # — Fix start-app.sh script —
+      - name: Update start script
+        run: |
+          sed -i 's/source venv\/bin\/activate/. venv\/bin\/activate/g' start-app.sh
+          chmod +x start-app.sh
+
+      # — Start via PM2 using start-app.sh —
+      - name: Start app with PM2
+        run: |
+          # Stop and delete existing app if it exists
+          pm2 delete my-app || true
+          # Start the app
+          pm2 start start-app.sh --name my-app --interpreter bash
+
+      # — Verify PM2 process is running —
+      - name: Check PM2 status
+        run: pm2 list
+
+      # — Wait for services to be ready —
+      # - name: Health check
+      #   run: |
+      #     echo "Waiting for services to start..."
+      #     sleep 10
+          
+      #     # Check if ports are listening
+      #     if netstat -tlnp | grep :8000; then
+      #       echo "✅ Backend is running on port 8000"
+      #     else
+      #       echo "❌ Backend is not running on port 8000"
+      #       pm2 logs my-app --lines 20
+      #       exit 1
+      #     fi
+          
+      #     if netstat -tlnp | grep :3000; then
+      #       echo "✅ Frontend is running on port 3000"
+      #     else
+      #       echo "❌ Frontend is not running on port 3000"
+      #       pm2 logs my-app --lines 20
+      #       exit 1
+      #     fi
+          
+      #     echo "🚀 Application deployed successfully!"

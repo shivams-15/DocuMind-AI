@@ -1,0 +1,8 @@
+venv/
+.env
+node_modules/
+build/
+
+doc-extraction.pem
+
+__pycache__
