@@ -58,9 +58,11 @@ Watch DocuMind AI in action! This demo showcases the complete workflow from docu
 
 <div align="center">
 
-https://github.com/user-attachments/assets/documing.mp4
+![Demo Video](https://raw.githubusercontent.com/shivams-15/DocuMind-AI/main/documind_gif.gif)
 
-**Or download the video:** [📥 Download Demo (documing.mp4)](./documing.mp4)
+**Or download the video:** [📥 Download Demo (documing.mp4)](./documind.mp4)
+
+</div>
 
 ### Demo Highlights:
 - 📄 **Document Upload & Processing** - Seamless file handling
@@ -69,7 +71,7 @@ https://github.com/user-attachments/assets/documing.mp4
 - 📊 **Analytics Dashboard** - Comprehensive insights and metrics
 - ⚡ **End-to-end Workflow** - Complete feature demonstration
 
-</div>
+
 
 ## 🛠️ Tech Stack
 
